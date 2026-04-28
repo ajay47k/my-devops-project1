@@ -28,11 +28,21 @@ resource "aws_iam_role" "ecs_execution_role" {
       Action    = "sts:AssumeRole"
     }]
   })
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_execution_policy" {
   role       = aws_iam_role.ecs_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# CloudWatch Log Group
+resource "aws_cloudwatch_log_group" "flask_app" {
+  name              = "/ecs/simple-flask-app"
+  retention_in_days = 7
 }
 
 # Task Definition
@@ -52,6 +62,14 @@ resource "aws_ecs_task_definition" "flask_app" {
       containerPort = 5000
       protocol      = "tcp"
     }]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = "/ecs/simple-flask-app"
+        "awslogs-region"        = "us-east-2"
+        "awslogs-stream-prefix" = "ecs"
+      }
+    }
   }])
 }
 
@@ -69,7 +87,7 @@ data "aws_subnets" "default" {
 
 # Security Group
 resource "aws_security_group" "flask_sg" {
-  name   = "flask-app-sg"
+  name   = "flask-app-sg-${formatdate("YYYYMMDDhhmmss", timestamp())}"
   vpc_id = data.aws_vpc.default.id
 
   ingress {
