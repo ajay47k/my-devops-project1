@@ -29,7 +29,7 @@ resource "aws_apprunner_service" "staging" {
 variable "image_uri" {
   description = "The full URI of the Docker image in ECR."
   type        = string
-}
+} 
 
 output "service_url" {
   value = aws_apprunner_service.staging.service_url
