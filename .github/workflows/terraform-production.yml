@@ -1,0 +1,41 @@
+name: Deploy Production Infrastructure
+
+on:
+    workflow_dispatch:
+        # sirf manually trigger hoga — koi auto nahi
+
+jobs:
+    terraform:
+        name: Terraform Production
+        runs-on: ubuntu-latest
+        environment: production # ← YEH LINE MAGIC HAI — approval gate
+
+        defaults:
+            run:
+                working-directory: terraform
+
+        env:
+            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Terraform
+              uses: hashicorp/setup-terraform@v3
+              with:
+                  terraform_version: "1.9.0"
+
+            - name: Terraform Init
+              run: terraform init
+
+            - name: Terraform Plan
+              run: |
+                  terraform plan \
+                    -var="image_uri=${{ secrets.ECR_REGISTRY }}/simple-flask-app:latest"
+
+            - name: Terraform Apply
+              run: |
+                  terraform apply -auto-approve \
+                    -var="image_uri=${{ secrets.ECR_REGISTRY }}/simple-flask-app:latest"
