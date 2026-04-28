@@ -1,51 +1,51 @@
 name: Deploy Staging Infrastructure
 
 on:
-    push:
-        branches:
-            - main
-        paths:
-            - "terraform/**" # sirf tab chale jab .tf files badli hon
+  push:
+    branches:
+      - main
+    paths:
+      - "terraform/**" # sirf tab chale jab .tf files badli hon
 
 env:
-    AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-    AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-    AWS_REGION: us-east-2
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_REGION: us-east-2
 
 jobs:
-    terraform:
-        name: "Terraform Staging"
-        runs-on: ubuntu-latest
+  terraform:
+    name: "Terraform Staging"
+    runs-on: ubuntu-latest
 
-        defaults:
-            run:
-                working-directory: terraform # sab commands terraform/ folder mein chalein
+    defaults:
+      run:
+        working-directory: terraform # sab commands terraform/ folder mein chalein
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Setup Terraform
-              uses: hashicorp/setup-terraform@v3
-              with:
-                  terraform_version: "1.9.0"
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
 
-            - name: Terraform Init
-              run: terraform init
+      - name: Terraform Init
+        run: terraform init
 
-            - name: Terraform Format Check
-              run: terraform fmt -check
-              continue-on-error: true # format issue se pipeline na tute
+      - name: Terraform Format Check
+        run: terraform fmt -check
+        continue-on-error: true # format issue se pipeline na tute
 
-            - name: Terraform Validate
-              run: terraform validate
+      - name: Terraform Validate
+        run: terraform validate
 
-            - name: Terraform Plan
-              run: |
-                  terraform plan \
-                    -var="app_image=${{ secrets.ECR_REGISTRY }}/my-flask-app:latest"
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var="image_uri=${{ secrets.ECR_REGISTRY }}/my-flask-app:latest"
 
-            - name: Terraform Apply
-              run: |
-                  terraform apply -auto-approve \
-                    -var="app_image=${{ secrets.ECR_REGISTRY }}/my-flask-app:latest"
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve \
+            -var="image_uri=${{ secrets.ECR_REGISTRY }}/my-flask-app:latest"
