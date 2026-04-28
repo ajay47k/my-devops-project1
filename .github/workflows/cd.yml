@@ -2,7 +2,7 @@ name: Continuous Delivery
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
 
 env:
   AWS_REGION: us-east-1
@@ -36,12 +36,12 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./simple-flask-app
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
   deploy:
-    name: Deploy to App Runner via Terraform
+    name: Deploy via Terraform
     runs-on: ubuntu-latest
     needs: build-and-push
 
@@ -65,4 +65,6 @@ jobs:
 
       - name: Terraform Apply
         working-directory: ./terraform
-        run: terraform apply -auto-approve -var="image_uri=${{ needs.build-and-push.outputs.image }}"
+        run: |
+          terraform apply -auto-approve \
+            -var="image_uri=${{ needs.build-and-push.outputs.image }}"
