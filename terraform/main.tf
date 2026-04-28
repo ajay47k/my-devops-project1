@@ -11,26 +11,102 @@ provider "aws" {
   region = "us-east-2"
 }
 
-resource "aws_apprunner_service" "staging" {
-  service_name = "simple-flask-app-staging"
+# ECS Cluster
+resource "aws_ecs_cluster" "staging" {
+  name = "simple-flask-app-staging"
+}
 
-  source_configuration {
-    image_repository {
-      image_identifier      = var.image_uri
-      image_repository_type = "ECR"
-      image_configuration {
-        port = "5000"
-      }
-    }
-    auto_deployments_enabled = false
+# Task Execution Role
+resource "aws_iam_role" "ecs_execution_role" {
+  name = "ecsTaskExecutionRole-staging"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_execution_policy" {
+  role       = aws_iam_role.ecs_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# Task Definition
+resource "aws_ecs_task_definition" "flask_app" {
+  family                   = "simple-flask-app"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+
+  container_definitions = jsonencode([{
+    name      = "simple-flask-app"
+    image     = var.image_uri
+    essential = true
+    portMappings = [{
+      containerPort = 5000
+      protocol      = "tcp"
+    }]
+  }])
+}
+
+# Default VPC Data
+data "aws_vpc" "default" {
+  default = true
+}
+
+data "aws_subnets" "default" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+}
+
+# Security Group
+resource "aws_security_group" "flask_sg" {
+  name   = "flask-app-sg"
+  vpc_id = data.aws_vpc.default.id
+
+  ingress {
+    from_port   = 5000
+    to_port     = 5000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# ECS Service
+resource "aws_ecs_service" "flask_app" {
+  name            = "simple-flask-app-staging"
+  cluster         = aws_ecs_cluster.staging.id
+  task_definition = aws_ecs_task_definition.flask_app.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = data.aws_subnets.default.ids
+    security_groups  = [aws_security_group.flask_sg.id]
+    assign_public_ip = true
   }
 }
 
 variable "image_uri" {
-  description = "The full URI of the Docker image in ECR."
+  description = "Full ECR image URI"
   type        = string
-} 
+}
 
-output "service_url" {
-  value = aws_apprunner_service.staging.service_url
+output "cluster_name" {
+  value = aws_ecs_cluster.staging.name
 }
