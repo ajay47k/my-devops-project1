@@ -48,6 +48,7 @@ variable "aws_region" {
 variable "image_uri" {
   description = "Full ECR image URI — passed by CD pipeline"
   type        = string
+  default     = "679209310994.dkr.ecr.us-east-2.amazonaws.com/simple-flask-app:latest"
 }
 
 variable "app_name" {
