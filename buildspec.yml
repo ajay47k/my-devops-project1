@@ -1,3 +1,35 @@
+# version: 0.2
+
+# phases:
+#   pre_build:
+#     commands:
+#       - echo Logging in to Amazon ECR...
+#       - aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 679209310994.dkr.ecr.us-east-2.amazonaws.com
+#       - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+#       - ECR_URI=679209310994.dkr.ecr.us-east-2.amazonaws.com/simple-flask-app
+
+#   build:
+#     commands:
+#       - echo Building Docker image...
+#       - docker build -t $ECR_URI:$IMAGE_TAG ./simple-flask-app
+#       - docker tag $ECR_URI:$IMAGE_TAG $ECR_URI:latest
+
+#   post_build:
+#     commands:
+#       - echo Pushing image to ECR...
+#       - docker push $ECR_URI:$IMAGE_TAG
+#       - docker push $ECR_URI:latest
+#       - echo Writing imageDetail.json for CodeDeploy...
+#       - printf '[{"name":"flask-pipeline","imageUri":"%s"}]' $ECR_URI:$IMAGE_TAG > imageDetail.json
+
+# artifacts:
+#   files:
+#     - imageDetail.json
+#     - appspec.yml
+#     - taskdef.json
+
+
+
 version: 0.2
 
 phases:
@@ -5,8 +37,10 @@ phases:
     commands:
       - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 679209310994.dkr.ecr.us-east-2.amazonaws.com
-      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - ECR_URI=679209310994.dkr.ecr.us-east-2.amazonaws.com/simple-flask-app
+      - export IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - export ECR_URI=679209310994.dkr.ecr.us-east-2.amazonaws.com/simple-flask-app
+      - echo "IMAGE_TAG=$IMAGE_TAG"
+      - echo "ECR_URI=$ECR_URI"
 
   build:
     commands:
@@ -19,8 +53,10 @@ phases:
       - echo Pushing image to ECR...
       - docker push $ECR_URI:$IMAGE_TAG
       - docker push $ECR_URI:latest
-      - echo Writing imageDetail.json for CodeDeploy...
-      - printf '[{"name":"flask-pipeline","imageUri":"%s"}]' $ECR_URI:$IMAGE_TAG > imageDetail.json
+      - echo Writing imageDetail.json...
+      - printf '[{"name":"flask-pipeline","imageUri":"%s:%s"}]' $ECR_URI $IMAGE_TAG > imageDetail.json
+      - cat imageDetail.json
+      - echo Build complete!
 
 artifacts:
   files:
